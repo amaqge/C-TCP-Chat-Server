@@ -7,45 +7,165 @@
 #include<thread>
 #include<chrono>
 #include<string>
+#include<mutex>
+#include<unistd.h>
+#include<cstring>
 using namespace std;
+int client2 = socket(AF_INET,SOCK_STREAM,0);
+
 
 void sendMessage(int clientScoket, string message){
     while(true){
+    
     cout<<"Enter the message to send to server: ";
     getline(cin, message);
-    send(clientScoket, message.c_str(), message.length(), 0);
+    if(message.size() == 0){
+        cout<<"You dont wrote the message: "<<endl;
+        getline(cin, message);
+        if(message.size() == 0){
+            cout<<"You dont wrote the message one more. Progarm will end"<<endl;
+            break;
+        }
+        else{
+            send(clientScoket, message.c_str(), message.length(), 0);
+        }
     }
-}
+    else{
+    int res = send(clientScoket, message.c_str(), message.length(), 0);
+    if(res > 0 && res < message.size()){
+        cout<<"Your meessage dont get correct pls try again or reconnect to server"<<endl;
+        getline(cin,message);
+        int res2 = send(clientScoket, message.c_str(), message.length(), 0);
+        if(res2 < 0){
+            cout<<"Error plz reconnect to srever"<<endl;
+            break;
+        }
+        else if(res2 == message.size()){
+            cout<<"Message is geten"<<endl;
+        }
+        else if(res2 > 0 && res2 < message.size()){
+            cout<<"Problem plz reconnect to server and try again"<<endl;
+            break;
+        }
+    }
+    else if(res < 0){
+        cout<<"Error"<<endl;
+        break;
+    }
+    else if(0 < res &&res == message.size()){
+        cout<<"Message is geten"<<endl;
+    }
+    }
+    }
+    close(client2);
+    }
+    
+    
+    
+
 
 void readyMessage(int clientSocket){
-    while(true){
-    char buffer[1024] = {};
-    recv(clientSocket, buffer, sizeof(buffer), 0);
-    cout<<"Message from Client2: "<<buffer<<endl;
+    while(true){  
+    char buffer[1024] = {};  
+    int rec = recv(clientSocket, buffer, sizeof(buffer), 0);
+    if(rec < 0){
+        cout<<"message error"<<endl;
+        break;
+    }
+    else if(rec == 0){
+        cout<<"Server Error"<<endl;
+        break;
+    }
+    else{
+    cout<<"Message from Client: "<<buffer<<endl;
+    }
     }
 }
 
+bool chec(int clientSocket)
+{
+    char buffer[1024] = {};
+    int rec = recv(clientSocket, buffer, sizeof(buffer), 0);
+    if(rec < 0){
+        cout<<"message error"<<endl;
+        return false;
+    }
+    else if(rec == 0){
+        cout<<"Server Error"<<endl;
+        return false;
+    }
+    else if(strcmp(buffer, "Server found client 2")== 0){
+        return true;
+    }
+    if(strcmp(buffer, "Waiting for another client to connect...") == 0){
+    char buffer2[1024] = {};
+    int buf = recv(clientSocket, buffer2, sizeof(buffer2), 0);
+    if(buf < 0){
+        cout<<"message error"<<endl;
+        return false;
+    }   
+    else if(buf == 0){
+        cout<<"Server Error"<<endl;
+        return false;
+    }
+    if(strcmp(buffer2, "No other client connected. Closing connection.")== 0){
+        cout<<"No client in server"<<endl;
+        return false;
+    }
+    else if(strcmp(buffer2, "Server found client 2")== 0){
+            cout<<"There is another client now you can send the messages"<<endl;
+            return true;
+    }
+    else if(strcmp(buffer, "Server found client 2")== 0){
+        return true;
+    }else{
+        return false;
+    }
+    }else{
+        return false;
+    }
+}
 
 int main(){
-    int client = socket(AF_INET,SOCK_STREAM,0);
-
+    if(client2 < 0 ){
+        cout<<"Socket Error"<<endl;
+        return 0;
+    }
     sockaddr_in serverAddress{};
     serverAddress.sin_len = sizeof(serverAddress);
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(8080);
-    inet_pton(AF_INET, "IP", &serverAddress.sin_addr);
-
-    if (connect(client, (sockaddr*)&serverAddress, sizeof(serverAddress)) < 0){
+    int ch = inet_pton(AF_INET, "IP", &serverAddress.sin_addr);
+    if(ch ==  1){
+        cout<<"connect to server"<<endl;
+    }
+    else if(ch == 0){
+        cout<<"Wrong IP"<<endl;
+        return 0;
+    }
+    else if(ch == -1){
+        cout<<"Error"<<endl;
+        return 0;
+    }
+    if (connect(client2, (sockaddr*)&serverAddress, sizeof(serverAddress)) < 0){
         perror("connect");
-        close(client);
+        close(client2);
         return 1;
     }
 
     string messages;
-    thread receiver(readyMessage, client);
+
+    bool red = chec(client2);
+    if(red == true){
+    thread receiver(readyMessage, client2);
     receiver.detach();
-    sendMessage(client, messages);
-    close(client);
+    sendMessage(client2, messages);
+    }
+    else if(red == false){
+        close(client2);
+        return 0;
+    }
+    close(client2);
 
 
 }

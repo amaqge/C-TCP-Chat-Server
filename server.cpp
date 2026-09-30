@@ -14,18 +14,19 @@ vector<int> clients;
 char choice;
 mutex mtx;
 condition_variable cv;
-
+const int PORT = 8080;
+int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
 void SendMessage(int clientSocket){
     {
         std::unique_lock<std::mutex> lock(mtx);
         if (clients.size() == 1){
             cout << "Waiting for another client to connect..." << endl;
-
+            send(clientSocket, "Waiting for another client to connect...", 40, 0 );
             bool connected = cv.wait_for(lock, std::chrono::seconds(60),[] {return clients.size() >= 2;});
             if (!connected){
                 cout << "No other client connected. Closing connection." << endl;
-
+                send(clientSocket, "No other client connected. Closing connection.", 46, 0);
                 for (auto it = clients.begin(); it != clients.end(); ++it){
                     if (*it == clientSocket){
                         clients.erase(it);
@@ -37,6 +38,7 @@ void SendMessage(int clientSocket){
             }
         }
     }
+    send(clientSocket, "Server found client 2", 21, 0);
     while (true){
         char buffer[1024] = {};
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
@@ -79,14 +81,11 @@ void SendMessage(int clientSocket){
 
 int main()
 {
-    
-    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-
     sockaddr_in serverAddress{};
     serverAddress.sin_len = sizeof(serverAddress);
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(8080);
-    inet_pton(AF_INET, "IP", &serverAddress.sin_addr);
+    serverAddress.sin_port = htons(PORT);
+    inet_pton(AF_INET, "192.168.8.120", &serverAddress.sin_addr);
 
     if (::bind(serverSocket,(sockaddr*)&serverAddress,sizeof(serverAddress)) < 0){
         perror("bind");
@@ -96,7 +95,6 @@ int main()
 
     cout << "Server started" << endl;
     listen(serverSocket, 5);
-    
     while(true){
         int clientSocket = accept(serverSocket, nullptr, nullptr);
         {
