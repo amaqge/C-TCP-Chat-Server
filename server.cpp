@@ -85,7 +85,7 @@ int main()
     serverAddress.sin_len = sizeof(serverAddress);
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(PORT);
-    inet_pton(AF_INET, "192.168.8.120", &serverAddress.sin_addr);
+    inet_pton(AF_INET, "IP", &serverAddress.sin_addr);
 
     if (::bind(serverSocket,(sockaddr*)&serverAddress,sizeof(serverAddress)) < 0){
         perror("bind");
