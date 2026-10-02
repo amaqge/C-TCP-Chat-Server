@@ -59,24 +59,17 @@ void SendMessage(int clientSocket){
             cv.notify_all();
             return;
         }
-
-        int targetSocket = -1;{
-            std::lock_guard<std::mutex> lock(mtx);
-
-            for (int socket : clients){
-                if (socket != clientSocket){
-                    targetSocket = socket;
-                    break;
+        {
+            std::lock_guard<std::mutex>lock(mtx);
+            for(int i = 0 ; i < clients.size(); i++){
+                if(clients[i]!= clientSocket){
+                    send(clients[i], buffer, sizeof(buffer), 0);
+                    }
                 }
-            }
         }
-        if (targetSocket == -1){
-            cout << "Waiting for another client to connect..." << endl;
-            continue;
-        }
-        send(targetSocket, buffer, bytesReceived,0);
     }
 }
+
 
 
 int main()
