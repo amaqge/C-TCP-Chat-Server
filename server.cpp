@@ -21,11 +21,11 @@ void SendMessage(int clientSocket){
     {
         std::unique_lock<std::mutex> lock(mtx);
         if (clients.size() == 1){
-            cout << "Waiting for another client to connect..." << endl;
+            cout << "Waiting for another client to connect..." <<'\n';
             send(clientSocket, "Waiting for another client to connect...", 40, 0 );
-            bool connected = cv.wait_for(lock, std::chrono::seconds(60),[] {return clients.size() >= 2;});
+            bool connected = cv.wait_for(lock, std::chrono::seconds(60),[&] {return clients.size() >= 2;});
             if (!connected){
-                cout << "No other client connected. Closing connection." << endl;
+                cout << "No other client connected. Closing connection." <<'\n';
                 send(clientSocket, "No other client connected. Closing connection.", 46, 0);
                 for (auto it = clients.begin(); it != clients.end(); ++it){
                     if (*it == clientSocket){
@@ -44,7 +44,7 @@ void SendMessage(int clientSocket){
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
 
         if (bytesReceived <= 0){
-            cout << "Client disconnected or error." << endl;
+            cout << "Client disconnected or error." <<'\n';
 
             std::lock_guard<std::mutex> lock(mtx);
 
@@ -63,7 +63,22 @@ void SendMessage(int clientSocket){
             std::lock_guard<std::mutex>lock(mtx);
             for(int i = 0 ; i < clients.size(); i++){
                 if(clients[i]!= clientSocket){
-                    send(clients[i], buffer, sizeof(buffer), 0);
+                    int se = send(clients[i], buffer, bytesReceived, 0);
+
+                    if(se == bytesReceived){
+                        continue;
+                    }
+                    else if(se !=bytesReceived){
+                        cout<<clients[i]<<" Dont gate full storage. Message will be sent one more time"<<'\n';
+                            int pe = bytesReceived - se;
+                            int se2 = send(clients[i], buffer +  se, pe, 0);
+                            if(se2 == pe){
+                                cout<<"successful"<<'\n';
+                            }
+                            else{
+                                cout<<"There is problem with somting : Code error 505"<<'\n';
+                            }
+                    }
                     }
                 }
         }
@@ -86,7 +101,7 @@ int main()
         return 1;
     }
 
-    cout << "Server started" << endl;
+    cout << "Server started" << '\n';
     listen(serverSocket, 5);
     while(true){
         int clientSocket = accept(serverSocket, nullptr, nullptr);
