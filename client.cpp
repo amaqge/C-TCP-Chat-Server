@@ -31,30 +31,14 @@ void sendMessage(int clientScoket, string message){
         }
     }
     else{
-    int res = send(clientScoket, message.c_str(), message.length(), 0);
-    if(res > 0 && res < message.size()){
-        cout<<"Your meessage dont get correct pls try again or reconnect to server"<<endl;
-        getline(cin,message);
-        int res2 = send(clientScoket, message.c_str(), message.length(), 0);
-        if(res2 < 0){
-            cout<<"Error plz reconnect to srever"<<endl;
-            break;
+        int totalsend = 0;
+        int byte = message.length();
+        while(byte > 0){
+            int n = send(clientScoket, message.c_str() + totalsend, byte, 0);
+            if(n<= 0){cout<<"Error"<<'\n'; break;}
+            totalsend += n;
+            byte -= n;
         }
-        else if(res2 == message.size()){
-            cout<<"Message is geten"<<endl;
-        }
-        else if(res2 > 0 && res2 < message.size()){
-            cout<<"Problem plz reconnect to server and try again"<<endl;
-            break;
-        }
-    }
-    else if(res < 0){
-        cout<<"Error"<<endl;
-        break;
-    }
-    else if(0 < res &&res == message.size()){
-        cout<<"Message is geten"<<endl;
-    }
     }
     }
     close(client2);

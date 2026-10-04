@@ -63,27 +63,22 @@ void SendMessage(int clientSocket){
             std::lock_guard<std::mutex>lock(mtx);
             for(int i = 0 ; i < clients.size(); i++){
                 if(clients[i]!= clientSocket){
-                    int se = send(clients[i], buffer, bytesReceived, 0);
-
-                    if(se == bytesReceived){
-                        continue;
-                    }
-                    else if(se !=bytesReceived){
-                        cout<<clients[i]<<" Dont gate full storage. Message will be sent one more time"<<'\n';
-                            int pe = bytesReceived - se;
-                            int se2 = send(clients[i], buffer +  se, pe, 0);
-                            if(se2 == pe){
-                                cout<<"successful"<<'\n';
-                            }
-                            else{
-                                cout<<"There is problem with somting : Code error 505"<<'\n';
-                            }
-                    }
-                    }
-                }
+                    int totalsent = 0;
+                    int byte = bytesReceived;
+                        while(0 < byte){
+                            int n = send(clients[i], buffer + totalsent, byte, 0);
+                            if(n <= 0){cout<<"Error"<<'\n'; break;}
+                            totalsent += n;  
+                            byte -= n; 
+                        }
+                }       
+            }
         }
-    }
+    } 
 }
+        
+    
+
 
 
 
