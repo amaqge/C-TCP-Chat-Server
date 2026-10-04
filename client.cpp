@@ -27,10 +27,19 @@ void sendMessage(int clientScoket, string message){
             break;
         }
         else{
-            send(clientScoket, message.c_str(), message.length(), 0);
+        message += '\n';
+        int totalsend = 0;
+        int byte = message.length();
+        while(byte > 0){
+            int n = send(clientScoket, message.c_str() + totalsend, byte, 0);
+            if(n<= 0){cout<<"Error"<<'\n'; break;}
+            totalsend += n;
+            byte -= n;
         }
     }
+    }
     else{
+        message += '\n';
         int totalsend = 0;
         int byte = message.length();
         while(byte > 0){
@@ -49,6 +58,7 @@ void sendMessage(int clientScoket, string message){
 
 
 void readyMessage(int clientSocket){
+    string col = "";
     while(true){  
     char buffer[1024] = {};  
     int rec = recv(clientSocket, buffer, sizeof(buffer), 0);
@@ -61,7 +71,13 @@ void readyMessage(int clientSocket){
         break;
     }
     else{
-    cout<<"Message from Client: "<<buffer<<endl;
+        col.append(buffer, rec);
+        size_t pos;
+        while((pos = col.find('\n')) != string::npos){
+            string pas = col.substr(0, pos + 1);
+            cout<<"Message: "<<pas<<'\n';
+            col.erase(0, pos + 1);
+        }
     }
     }
 }

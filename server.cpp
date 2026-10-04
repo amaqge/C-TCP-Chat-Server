@@ -6,7 +6,7 @@
 #include<thread>
 #include<chrono>
 #include<vector>
-#include <condition_variable>
+#include<condition_variable>
 #include<mutex>
 using namespace std;
 
@@ -39,10 +39,10 @@ void SendMessage(int clientSocket){
         }
     }
     send(clientSocket, "Server found client 2", 21, 0);
+    string col = "";
     while (true){
         char buffer[1024] = {};
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-
         if (bytesReceived <= 0){
             cout << "Client disconnected or error." <<'\n';
 
@@ -59,23 +59,29 @@ void SendMessage(int clientSocket){
             cv.notify_all();
             return;
         }
-        {
-            std::lock_guard<std::mutex>lock(mtx);
+        col.append(buffer, bytesReceived);
+        size_t pos;
+        while((pos = col.find('\n')) != string::npos){
+            string pas = col.substr(0, pos + 1);
+            std::lock_guard<std::mutex> lock(mtx);
             for(int i = 0 ; i < clients.size(); i++){
                 if(clients[i]!= clientSocket){
                     int totalsent = 0;
-                    int byte = bytesReceived;
+                    int byte = pas.size();
                         while(0 < byte){
-                            int n = send(clients[i], buffer + totalsent, byte, 0);
+                            int n = send(clients[i], pas.c_str() + totalsent, byte, 0);
                             if(n <= 0){cout<<"Error"<<'\n'; break;}
                             totalsent += n;  
                             byte -= n; 
                         }
                 }       
             }
+            col.erase(0, pos + 1);
         }
-    } 
+    }
 }
+
+
         
     
 
