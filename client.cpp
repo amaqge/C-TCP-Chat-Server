@@ -10,13 +10,13 @@
 #include<mutex>
 #include<unistd.h>
 #include<cstring>
+#include<cstdlib>
 using namespace std;
 int client2 = socket(AF_INET,SOCK_STREAM,0);
 
 
 void sendMessage(int clientScoket, string message){
     while(true){
-    
     cout<<"Enter the message to send to server: ";
     getline(cin, message);
     if(message.size() == 0){
@@ -36,7 +36,7 @@ void sendMessage(int clientScoket, string message){
             totalsend += n;
             byte -= n;
         }
-    }
+        }
     }
     else{
         message += '\n';
@@ -50,7 +50,6 @@ void sendMessage(int clientScoket, string message){
         }
     }
     }
-    close(client2);
     }
     
     
@@ -64,11 +63,11 @@ void readyMessage(int clientSocket){
     int rec = recv(clientSocket, buffer, sizeof(buffer), 0);
     if(rec < 0){
         cout<<"message error"<<endl;
-        break;
+        exit(0);
     }
     else if(rec == 0){
         cout<<"Server Error"<<endl;
-        break;
+        exit(0);
     }
     else{
         col.append(buffer, rec);
@@ -126,6 +125,8 @@ bool chec(int clientSocket)
     }
 }
 
+
+
 int main(){
     if(client2 < 0 ){
         cout<<"Socket Error"<<endl;
@@ -166,6 +167,7 @@ int main(){
         return 0;
     }
     close(client2);
+    return 0;
 
 
 }
