@@ -8,14 +8,24 @@
 #include<vector>
 #include<condition_variable>
 #include<mutex>
+#include<string>
 using namespace std;
 
-vector<int> clients;
+struct clientinfo{
+    int socket; 
+    string name;
+};
+vector<clientinfo>clients;
 char choice;
 mutex mtx;
 condition_variable cv;
 const int PORT = 8080;
 int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+int clientcounter = 1;
+
+
+
+
 
 void SendMessage(int clientSocket){
     {
@@ -28,7 +38,7 @@ void SendMessage(int clientSocket){
                 cout << "No other client connected. Closing connection." <<'\n';
                 send(clientSocket, "No other client connected. Closing connection.", 46, 0);
                 for (auto it = clients.begin(); it != clients.end(); ++it){
-                    if (*it == clientSocket){
+                    if (it->socket == clientSocket){
                         clients.erase(it);
                         break;
                     }
@@ -45,16 +55,13 @@ void SendMessage(int clientSocket){
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
         if (bytesReceived <= 0){
             cout << "Client disconnected or error." <<'\n';
-
             std::lock_guard<std::mutex> lock(mtx);
-
             for (auto it = clients.begin(); it != clients.end(); ++it){
-                if (*it == clientSocket){
+                if (it->socket == clientSocket){
                     clients.erase(it);
                     break;
                 }
             }
-
             close(clientSocket);
             cv.notify_all();
             return;
@@ -64,12 +71,19 @@ void SendMessage(int clientSocket){
         while((pos = col.find('\n')) != string::npos){
             string pas = col.substr(0, pos + 1);
             std::lock_guard<std::mutex> lock(mtx);
+            string sendername;
+            for(int i = 0; i< clients.size(); i++){
+                if(clientSocket == clients[i].socket){
+                    sendername = clients[i].name;
+                }
+            }
+            string fullMessage = sendername + ": " + pas;
             for(int i = 0 ; i < clients.size(); i++){
-                if(clients[i]!= clientSocket){
+                if(clients[i].socket!= clientSocket){
                     int totalsent = 0;
-                    int byte = pas.size();
+                    int byte = fullMessage.size();
                         while(0 < byte){
-                            int n = send(clients[i], pas.c_str() + totalsent, byte, 0);
+                            int n = send(clients[i].socket, fullMessage.c_str() + totalsent, byte, 0);
                             if(n <= 0){cout<<"Error"<<'\n'; break;}
                             totalsent += n;  
                             byte -= n; 
@@ -94,7 +108,7 @@ int main()
     serverAddress.sin_len = sizeof(serverAddress);
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(PORT);
-    inet_pton(AF_INET, "IP", &serverAddress.sin_addr);
+    inet_pton(AF_INET, "127.0.0.1", &serverAddress.sin_addr);
 
     if (::bind(serverSocket,(sockaddr*)&serverAddress,sizeof(serverAddress)) < 0){
         perror("bind");
@@ -108,7 +122,11 @@ int main()
         int clientSocket = accept(serverSocket, nullptr, nullptr);
         {
             std::lock_guard<std::mutex> lock(mtx);
-            clients.push_back(clientSocket);
+            clientinfo newclient;
+            newclient.socket = clientSocket;
+            newclient.name = "Client" + to_string(clientcounter);
+            clientcounter ++;
+            clients.push_back(newclient);
             if (clients.size() >= 2) {
                 cv.notify_all(); 
             }

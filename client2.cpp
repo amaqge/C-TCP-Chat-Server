@@ -136,7 +136,7 @@ int main(){
     serverAddress.sin_len = sizeof(serverAddress);
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(8080);
-    int ch = inet_pton(AF_INET, "IP", &serverAddress.sin_addr);
+    int ch = inet_pton(AF_INET, "127.0.0.1", &serverAddress.sin_addr);
     if(ch ==  1){
         cout<<"connect to server"<<endl;
     }
