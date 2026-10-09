@@ -28,27 +28,6 @@ int clientcounter = 1;
 
 
 void SendMessage(int clientSocket){
-    {
-        std::unique_lock<std::mutex> lock(mtx);
-        if (clients.size() == 1){
-            cout << "Waiting for another client to connect..." <<'\n';
-            send(clientSocket, "Waiting for another client to connect...", 40, 0 );
-            bool connected = cv.wait_for(lock, std::chrono::seconds(60),[&] {return clients.size() >= 2;});
-            if (!connected){
-                cout << "No other client connected. Closing connection." <<'\n';
-                send(clientSocket, "No other client connected. Closing connection.", 46, 0);
-                for (auto it = clients.begin(); it != clients.end(); ++it){
-                    if (it->socket == clientSocket){
-                        clients.erase(it);
-                        break;
-                    }
-                }
-                close(clientSocket);
-                return;
-            }
-        }
-    }
-    send(clientSocket, "Server found client 2", 21, 0);
     string col = "";
     while (true){
         char buffer[1024] = {};
@@ -56,12 +35,26 @@ void SendMessage(int clientSocket){
         if (bytesReceived <= 0){
             cout << "Client disconnected or error." <<'\n';
             std::lock_guard<std::mutex> lock(mtx);
-            for (auto it = clients.begin(); it != clients.end(); ++it){
-                if (it->socket == clientSocket){
-                    clients.erase(it);
-                    break;
+        for (auto it = clients.begin(); it != clients.end(); ++it){
+                string left ="[Server]: " + it->name + " left from the chat\n";
+            if(it->socket == clientSocket){
+                for(int i = 0; i < clients.size(); i++){
+                if(clients[i].socket != clientSocket){
+                    int totalsent = 0;
+                    int byte = left.size();
+                        while(0 < byte){
+                            int n = send(clients[i].socket, left.c_str() + totalsent, byte, 0);
+                            if(n <= 0){cout<<"Error"<<'\n'; break;}
+                            totalsent += n;  
+                            byte -= n; 
+                        }
                 }
-            }
+                }
+                clients.erase(it);
+                break;  
+            } 
+
+        }
             close(clientSocket);
             cv.notify_all();
             return;
@@ -71,6 +64,64 @@ void SendMessage(int clientSocket){
         while((pos = col.find('\n')) != string::npos){
             string pas = col.substr(0, pos + 1);
             std::lock_guard<std::mutex> lock(mtx);
+            if(pas.find("/nick ") == 0){
+                string newname = pas.substr(6);
+                newname.pop_back();
+            if(newname.find(' ') == string::npos && newname.length() > 0){
+                for(int i =0; i< clients.size(); i++){
+                    if(clients[i].socket == clientSocket){
+                        clients[i].name = newname;
+                    }
+                }
+            }
+                string servermessgae = "[Server]: Your name changed to " + newname + " \n";
+                send(clientSocket, servermessgae.c_str(), servermessgae.size(), 0);
+                col.erase(0, pos + 1);
+                continue;
+            }
+            if(pas.find("/msg ") == 0){
+                size_t space_pos = pas.find(' ', 5);
+                if(space_pos != string::npos){
+                    string target = pas.substr(5, space_pos - 5);
+                    string text = pas.substr(space_pos + 1);
+                    string send1 = "Unknow";
+                    for(int i = 0; i < clients.size(); i++){
+                        if(clients[i].socket == clientSocket){
+                            send1 = clients[i].name;
+                            break;
+                        }
+                    }
+                    string full = "[Private from " + send1 + "]: " + text;
+                    bool found = false;
+                    for(int i = 0; i < clients.size(); i++){
+                        if(clients[i].name == target){
+                            int totalsent = 0;
+                            int byte = full.size();
+                            while(0 < byte){
+                                int n = send(clients[i].socket, full.c_str() + totalsent, byte, 0);
+                                if(n <= 0){cout<<"Error"<<'\n'; break;}
+                                totalsent += n;  
+                                byte -= n;
+                        }
+                    found = true;
+                    break;
+                    }
+                }
+                if (!found) {
+                    string errorMsg = "[Server]: User " + target + " not found\n";
+                    int totalsent = 0;
+                    int byte = errorMsg.size();
+                    while(0 < byte){
+                        int n = send(clientSocket, errorMsg.c_str() + totalsent, byte, 0);
+                        if(n <= 0){cout<<"Error"<<'\n'; break;}
+                        totalsent += n;  
+                        byte -= n;
+                    }
+                }
+            }
+            col.erase(0, pos + 1);
+            continue;
+        }
             string sendername;
             for(int i = 0; i< clients.size(); i++){
                 if(clientSocket == clients[i].socket){
@@ -102,8 +153,7 @@ void SendMessage(int clientSocket){
 
 
 
-int main()
-{
+int main(){
     sockaddr_in serverAddress{};
     serverAddress.sin_len = sizeof(serverAddress);
     serverAddress.sin_family = AF_INET;
@@ -129,6 +179,19 @@ int main()
             clients.push_back(newclient);
             if (clients.size() >= 2) {
                 cv.notify_all(); 
+            }
+            string join = "[Server]:  " + newclient.name + " joined to the chat\n";
+            for(int i = 0; i < clients.size(); i++){
+                if(clients[i].socket != clientSocket){
+                    int totalsent = 0;
+                    int byte = join.size();
+                        while(0 < byte){
+                            int n = send(clients[i].socket, join.c_str() + totalsent, byte, 0);
+                            if(n <= 0){cout<<"Error"<<'\n'; break;}
+                            totalsent += n;  
+                            byte -= n; 
+                        }
+                }
             }
         }
         thread t(SendMessage, clientSocket);

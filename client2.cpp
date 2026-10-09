@@ -74,54 +74,10 @@ void readyMessage(int clientSocket){
         size_t pos;
         while((pos = col.find('\n')) != string::npos){
             string pas = col.substr(0, pos + 1);
-            cout<<"Message: "<<pas<<'\n';
+            cout<<pas<<'\n';
             col.erase(0, pos + 1);
         }
     }
-    }
-}
-
-bool chec(int clientSocket)
-{
-    char buffer[1024] = {};
-    int rec = recv(clientSocket, buffer, sizeof(buffer), 0);
-    if(rec < 0){
-        cout<<"message error"<<endl;
-        return false;
-    }
-    else if(rec == 0){
-        cout<<"Server Error"<<endl;
-        return false;
-    }
-    else if(strcmp(buffer, "Server found client 2")== 0){
-        return true;
-    }
-    if(strcmp(buffer, "Waiting for another client to connect...") == 0){
-    char buffer2[1024] = {};
-    int buf = recv(clientSocket, buffer2, sizeof(buffer2), 0);
-    if(buf < 0){
-        cout<<"message error"<<endl;
-        return false;
-    }   
-    else if(buf == 0){
-        cout<<"Server Error"<<endl;
-        return false;
-    }
-    if(strcmp(buffer2, "No other client connected. Closing connection.")== 0){
-        cout<<"No client in server"<<endl;
-        return false;
-    }
-    else if(strcmp(buffer2, "Server found client 2")== 0){
-            cout<<"There is another client now you can send the messages"<<endl;
-            return true;
-    }
-    else if(strcmp(buffer, "Server found client 2")== 0){
-        return true;
-    }else{
-        return false;
-    }
-    }else{
-        return false;
     }
 }
 
@@ -153,19 +109,10 @@ int main(){
         close(client2);
         return 1;
     }
-
     string messages;
-
-    bool red = chec(client2);
-    if(red == true){
     thread receiver(readyMessage, client2);
     receiver.detach();
     sendMessage(client2, messages);
-    }
-    else if(red == false){
-        close(client2);
-        return 0;
-    }
     close(client2);
     return 0;
 
