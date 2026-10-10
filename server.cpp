@@ -16,9 +16,7 @@ struct clientinfo{
     string name;
 };
 vector<clientinfo>clients;
-char choice;
 mutex mtx;
-condition_variable cv;
 const int PORT = 8080;
 int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 int clientcounter = 1;
@@ -34,29 +32,33 @@ void SendMessage(int clientSocket){
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
         if (bytesReceived <= 0){
             cout << "Client disconnected or error." <<'\n';
-            std::lock_guard<std::mutex> lock(mtx);
-        for (auto it = clients.begin(); it != clients.end(); ++it){
-                string left ="[Server]: " + it->name + " left from the chat\n";
-            if(it->socket == clientSocket){
-                for(int i = 0; i < clients.size(); i++){
-                if(clients[i].socket != clientSocket){
-                    int totalsent = 0;
-                    int byte = left.size();
-                        while(0 < byte){
-                            int n = send(clients[i].socket, left.c_str() + totalsent, byte, 0);
-                            if(n <= 0){cout<<"Error"<<'\n'; break;}
-                            totalsent += n;  
-                            byte -= n; 
-                        }
+            string liftname = "";
+            vector<int> disco;
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                for(auto it = clients.begin(); it != clients.end(); ++it){
+                    if(it->socket == clientSocket){
+                        liftname = it->name;
+                        clients.erase(it);
+                        break;
+                    }
                 }
+                for(size_t i = 0; i < clients.size(); i++){
+                    disco.push_back(clients[i].socket);
                 }
-                clients.erase(it);
-                break;  
-            } 
-
-        }
+            }
+            string messagenumber1 = "[Server]: " + liftname + " left the chat\n";
+            for(size_t i = 0; i < disco.size(); i++){
+                int totalsent = 0;
+                int byte = messagenumber1.size();
+                while(0 < byte){
+                    int n = send(disco[i], messagenumber1.c_str() + totalsent, byte, 0);
+                    if(n <= 0){cout<<"Error"<<'\n'; break;}
+                    totalsent += n;  
+                    byte -= n; 
+                }
+            }
             close(clientSocket);
-            cv.notify_all();
             return;
         }
         col.append(buffer, bytesReceived);
@@ -147,6 +149,7 @@ void SendMessage(int clientSocket){
 }
 
 
+
         
     
 
@@ -165,7 +168,6 @@ int main(){
         close(serverSocket);
         return 1;
     }
-
     cout << "Server started" << '\n';
     listen(serverSocket, 5);
     while(true){
@@ -175,11 +177,8 @@ int main(){
             clientinfo newclient;
             newclient.socket = clientSocket;
             newclient.name = "Client" + to_string(clientcounter);
-            clientcounter ++;
+            clientcounter++;
             clients.push_back(newclient);
-            if (clients.size() >= 2) {
-                cv.notify_all(); 
-            }
             string join = "[Server]:  " + newclient.name + " joined to the chat\n";
             for(int i = 0; i < clients.size(); i++){
                 if(clients[i].socket != clientSocket){
